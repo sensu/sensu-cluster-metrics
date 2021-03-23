@@ -19,10 +19,11 @@ import (
 // Config represents the check plugin config.
 type Config struct {
 	sensu.PluginConfig
-	Url        string
-	ApiKey     string
-	CAFile     string
-	SkipVerify bool
+	Url          string
+	ApiKey       string
+	CAFile       string
+	OutputFormat string
+	SkipVerify   bool
 }
 
 var metrics = []string{}
@@ -92,7 +93,7 @@ var (
 			Argument:  "url",
 			Shorthand: "u",
 			Default:   "http://localhost:3000/graphql",
-			Usage:     "Url to access the Sensu Dashboard Web-UI",
+			Usage:     "url to access the Sensu Dashboard Web-UI",
 			Value:     &plugin.Url,
 		},
 		&sensu.PluginConfigOption{
@@ -113,12 +114,12 @@ var (
 			Value:    &plugin.SkipVerify,
 		},
 		&sensu.PluginConfigOption{
-			Path:     "ca-file",
-			Argument: "ca-file",
-			Env:      "DASHBOARD_CA_FILE",
-			Default:  "",
-			Usage:    "TLS CA certificate bundle in PEM format",
-			Value:    &plugin.CAFile,
+			Path:     "output-format",
+			Argument: "output-format",
+			Env:      "DASHBOARD_OUTPUT_FORMAT",
+			Default:  "opentsdb_line",
+			Usage:    "metrics output format, supports: opentsdb_line or prometheus_text",
+			Value:    &plugin.OutputFormat,
 		},
 	}
 )
@@ -224,16 +225,16 @@ func executeCheck(event *types.Event) (int, error) {
 	//fmt.Printf("fresult: %+v\n", fresult)
 	for _, cluster := range fresult.Data.Clusters {
 		if strings.Compare(cluster.Name, "~") == 0 {
-			tags["cluster_name"] = "local"
+			tags["cluster"] = "local"
 		} else {
-			tags["cluster_name"] = cluster.Name
+			tags["cluster"] = cluster.Name
 		}
 		addMetric("cluster.total", tags, strconv.Itoa(cluster.Metrics.ClusterGauges.Total), timeNow)
 		for _, ns := range cluster.Metrics.Namespaces {
 			if strings.Compare(ns.Name, "~") == 0 {
-				tags["namespace_name"] = "local"
+				tags["namespace"] = "local"
 			} else {
-				tags["namespace_name"] = ns.Name
+				tags["namespace"] = ns.Name
 			}
 			addMetric("namespace.entity.total", tags, strconv.Itoa(ns.EntityGauges.Total), timeNow)
 			addMetric("namespace.entity.agent", tags, strconv.Itoa(ns.EntityGauges.Agent), timeNow)
@@ -307,10 +308,41 @@ func graphqlQuery(queryStr map[string]string) ([]byte, error) {
 }
 
 func addMetric(metricName string, tags map[string]string, value string, timeNow int64) {
+	switch plugin.OutputFormat {
+	case "opentsdb_line":
+		addOpenTSDBMetric(metricName, tags, value, timeNow)
+	case "prometheus_text":
+		addPrometheusMetric(metricName, tags, value, timeNow)
+	default:
+		addOpenTSDBMetric(metricName, tags, value, timeNow)
+	}
+}
+
+func addOpenTSDBMetric(metricName string, tags map[string]string, value string, timeNow int64) {
 	tagStr := ""
 	for tag, tvalue := range tags {
-		tagStr = tagStr + ";" + tag + "=" + tvalue
+		if len(tagStr) > 0 {
+			tagStr = tagStr + " "
+		}
+		tagStr = tagStr + tag + "=" + tvalue
 	}
+	outputs := []string{metricName, strconv.FormatInt(timeNow, 10), value, tagStr}
+	//fmt.Println(strings.Join(outputs, " "))
+	metrics = append(metrics, strings.Join(outputs, " "))
+}
+
+func addPrometheusMetric(metricName string, tags map[string]string, value string, timeNow int64) {
+	tagStr := ""
+	for tag, tvalue := range tags {
+		if len(tagStr) > 0 {
+			tagStr = tagStr + ","
+		}
+		tagStr = tagStr + tag + "=\"" + tvalue + "\""
+	}
+	if len(tagStr) > 0 {
+		tagStr = "{" + tagStr + "}"
+	}
+	metricName = strings.Replace(metricName, ".", "_", -1)
 	outputs := []string{metricName + tagStr, value, strconv.FormatInt(timeNow, 10)}
 	//fmt.Println(strings.Join(outputs, " "))
 	metrics = append(metrics, strings.Join(outputs, " "))
