@@ -1,4 +1,4 @@
-module github.com/jspaleta/sensu-dashboard-metrics
+module github.com/sensu/sensu-cluster-metrics
 
 go 1.14
 

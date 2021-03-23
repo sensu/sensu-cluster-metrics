@@ -1,6 +1,6 @@
-[![Sensu Bonsai Asset](https://img.shields.io/badge/Bonsai-Download%20Me-brightgreen.svg?colorB=89C967&logo=sensu)](https://bonsai.sensu.io/assets/sensu/sensu-dashboard-metrics)
-![Go Test](https://github.com/sensu/sensu-dashboard-metrics/workflows/Go%20Test/badge.svg)
-![goreleaser](https://github.com/sensu/sensu-dashboard-metrics/workflows/goreleaser/badge.svg)
+[![Sensu Bonsai Asset](https://img.shields.io/badge/Bonsai-Download%20Me-brightgreen.svg?colorB=89C967&logo=sensu)](https://bonsai.sensu.io/assets/sensu/sensu-cluster-metrics)
+![Go Test](https://github.com/sensu/sensu-cluster-metrics/workflows/Go%20Test/badge.svg)
+![goreleaser](https://github.com/sensu/sensu-cluster-metrics/workflows/goreleaser/badge.svg)
 
 # Check Plugin Template
 
@@ -18,7 +18,7 @@ and customize the `checkArgs` and `executeCheck` functions in [main.go][7].
 
 When writing or updating a plugin's README from this template, review the Sensu Community
 [plugin README style guide][3] for content suggestions and guidance. Remove everything
-prior to `# sensu-dashboard-metrics` from the generated README file, and add additional context about the
+prior to `# sensu-cluster-metrics` from the generated README file, and add additional context about the
 plugin per the style guide.
 
 ## Releases with Github Actions
@@ -29,7 +29,7 @@ the plugin with goreleaser. Register the asset with [Bonsai][8] to share it with
 
 ***
 
-# sensu-dashboard-metrics
+# sensu-cluster-metrics
 
 ## Table of Contents
 - [Overview](#overview)
@@ -43,7 +43,7 @@ the plugin with goreleaser. Register the asset with [Bonsai][8] to share it with
 
 ## Overview
 
-The sensu-dashboard-metrics is a [Sensu Check][6] that queries the Sensu backend graphql endpoint and provides federation dashboard metrics.
+The sensu-cluster-metrics is a [Sensu Check][6] that queries the Sensu backend graphql endpoint and provides federation cluster metrics.
 
 ## Usage examples
 
@@ -53,28 +53,28 @@ Help:
 
 ```
 Usage:
-  sensu-dashboard-metrics [flags]
-  sensu-dashboard-metrics [command]
+  sensu-cluster-metrics [flags]
+  sensu-cluster-metrics [command]
 
 Available Commands:
   help        Help about any command
   version     Print the version number of this plugin
 
 Flags:
-  -a, --apikey string          Sensu apikey for authentication (use envvar DASHBOARD_APIKEY in production)
-  -h, --help                   help for sensu-dashboard-metrics
+  -a, --apikey string          Sensu apikey for authentication (use envvar CLUSTER_APIKEY in production)
+  -h, --help                   help for sensu-cluster-metrics
       --output-format string   metrics output format, supports: opentsdb_line or prometheus_text (default "opentsdb_line")
       --skip-insecure-verify   skip TLS certificate verification (not recommended!)
-  -u, --url string             url to access the Sensu Dashboard Web-UI (default "http://localhost:3000/graphql")
+  -u, --url string             url to access the Sensu federated cluster graphql endpoint (default "http://localhost:8080/graphql")
 
 ```
 ### Environment variables
 
 |Argument               |Environment Variable       |
 |-----------------------|---------------------------|
-|--apikey               | DASHBOARD_APIKEY          |
-|--output-format        | DASHBOARD_OUTPUT_FORMAT   |
-|--url                  | DASHBOARD_URL             |
+|--apikey               | CLUSTER_APIKEY          |
+|--output-format        | CLUSTER_OUTPUT_FORMAT   |
+|--url                  | CLUSTER_URL             |
 
 
 **Security Note:** Care should be taken to not expose the apikey for this check by specifying it
@@ -88,10 +88,10 @@ use of the built-in [env secrets provider][8].
 type: Secret
 api_version: secrets/v1
 metadata:
-  name: dashboard-apikey
+  name: cluster-apikey
 spec:
   provider: env
-  id: DASHBOARD_APIKEY
+  id: CLUSTER_APIKEY
 ```
 
 ## Configuration
@@ -103,10 +103,10 @@ consider doing so! If you're using sensuctl 5.13 with Sensu Backend 5.13 or late
 following command to add the asset:
 
 ```
-sensuctl asset add sensu/sensu-dashboard-metrics
+sensuctl asset add sensu/sensu-cluster-metrics
 ```
 
-If you're using an earlier version of sensuctl, you can find the asset on the [Bonsai Asset Index][https://bonsai.sensu.io/assets/sensu/sensu-dashboard-metrics].
+If you're using an earlier version of sensuctl, you can find the asset on the [Bonsai Asset Index][https://bonsai.sensu.io/assets/sensu/sensu-cluster-metrics].
 
 ### Check definition
 
@@ -115,20 +115,20 @@ If you're using an earlier version of sensuctl, you can find the asset on the [B
 type: CheckConfig
 api_version: core/v2
 metadata:
-  name: sensu-dashboard-metrics
+  name: sensu-cluster-metrics
   namespace: default
 spec:
-  command: sensu-dashboard-metrics --output-format "prometheus_text"
+  command: sensu-cluster-metrics --output-format "prometheus_text"
   subscriptions:
   - sensu-metrics
   runtime_assets:
-  - sensu/sensu-dashboard-metrics
+  - sensu/sensu-cluster-metrics
   output_metric_format: prometheus_text
   output_metric_handlers:
   - timeseries_database
   secrets:
-  - name: DASHBORD_APIKEY
-    secret: dashboard-apikey
+  - name: CLUSTER_APIKEY
+    secret: cluster-apikey
 ```
 
 ## Installation from source
@@ -137,7 +137,7 @@ The preferred way of installing and deploying this plugin is to use it as an Ass
 like to compile and install the plugin from source or contribute to it, download the latest version
 or create an executable script from this source.
 
-From the local path of the sensu-dashboard-metrics repository:
+From the local path of the sensu-cluster-metrics repository:
 
 ```
 go build

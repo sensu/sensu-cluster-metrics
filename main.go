@@ -80,30 +80,30 @@ var (
   }}`}
 	plugin = Config{
 		PluginConfig: sensu.PluginConfig{
-			Name:     "sensu-dashboard-metrics",
-			Short:    "Sensu dashboard metrics using graphQL",
-			Keyspace: "sensu.io/plugins/sensu-dashboard-metrics/config",
+			Name:     "sensu-cluster-metrics",
+			Short:    "Sensu cluster metrics using graphQL",
+			Keyspace: "sensu.io/plugins/sensu-cluster-metrics/config",
 		},
 	}
 
 	options = []*sensu.PluginConfigOption{
 		&sensu.PluginConfigOption{
 			Path:      "url",
-			Env:       "DASHBOARD_URL",
+			Env:       "CLUSTER_URL",
 			Argument:  "url",
 			Shorthand: "u",
-			Default:   "http://localhost:3000/graphql",
-			Usage:     "url to access the Sensu Dashboard Web-UI",
+			Default:   "http://localhost:8080/graphql",
+			Usage:     "url to access the Sensu cluster graphql endpoint",
 			Value:     &plugin.Url,
 		},
 		&sensu.PluginConfigOption{
-			Path:      "apikey",
-			Env:       "DASHBOARD_APIKEY",
-			Argument:  "apikey",
-			Shorthand: "a",
+			Path:      "api-key",
+			Env:       "CLUSTER_API_KEY",
+			Argument:  "api-key",
+			Shorthand: "k",
 			Secret:    true,
 			Default:   "",
-			Usage:     "Sensu apikey for authentication (use envvar DASHBOARD_APIKEY in production)",
+			Usage:     "Sensu apikey for authentication (use envvar CLUSTER_API_KEY in production)",
 			Value:     &plugin.ApiKey,
 		},
 		&sensu.PluginConfigOption{
@@ -116,7 +116,7 @@ var (
 		&sensu.PluginConfigOption{
 			Path:     "output-format",
 			Argument: "output-format",
-			Env:      "DASHBOARD_OUTPUT_FORMAT",
+			Env:      "CLUSTER_OUTPUT_FORMAT",
 			Default:  "opentsdb_line",
 			Usage:    "metrics output format, supports: opentsdb_line or prometheus_text",
 			Value:    &plugin.OutputFormat,
@@ -131,10 +131,10 @@ func main() {
 
 func checkArgs(event *types.Event) (int, error) {
 	if len(plugin.Url) == 0 {
-		return sensu.CheckStateWarning, fmt.Errorf("--url or DASHBOARD_URL environment variable is required")
+		return sensu.CheckStateWarning, fmt.Errorf("--url or CLUSTER_URL environment variable is required")
 	}
 	if len(plugin.ApiKey) == 0 {
-		return sensu.CheckStateWarning, fmt.Errorf("--apikey or DASHBOARD_APIKEY environment variable is required")
+		return sensu.CheckStateWarning, fmt.Errorf("--apikey or CLUSTER_API_KEY environment variable is required")
 	}
 	return sensu.CheckStateOK, nil
 }
