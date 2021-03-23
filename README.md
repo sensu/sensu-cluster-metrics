@@ -33,7 +33,6 @@ the plugin with goreleaser. Register the asset with [Bonsai][8] to share it with
 
 ## Table of Contents
 - [Overview](#overview)
-- [Files](#files)
 - [Usage examples](#usage-examples)
 - [Configuration](#configuration)
   - [Asset registration](#asset-registration)
@@ -44,11 +43,56 @@ the plugin with goreleaser. Register the asset with [Bonsai][8] to share it with
 
 ## Overview
 
-The sensu-dashboard-metrics is a [Sensu Check][6] that ...
-
-## Files
+The sensu-dashboard-metrics is a [Sensu Check][6] that queries the Sensu backend graphql endpoint and provides federation dashboard metrics.
 
 ## Usage examples
+
+### Help Output
+
+Help:
+
+```
+Usage:
+  sensu-dashboard-metrics [flags]
+  sensu-dashboard-metrics [command]
+
+Available Commands:
+  help        Help about any command
+  version     Print the version number of this plugin
+
+Flags:
+  -a, --apikey string          Sensu apikey for authentication (use envvar DASHBOARD_APIKEY in production)
+  -h, --help                   help for sensu-dashboard-metrics
+      --output-format string   metrics output format, supports: opentsdb_line or prometheus_text (default "opentsdb_line")
+      --skip-insecure-verify   skip TLS certificate verification (not recommended!)
+  -u, --url string             url to access the Sensu Dashboard Web-UI (default "http://localhost:3000/graphql")
+
+```
+### Environment variables
+
+|Argument               |Environment Variable       |
+|-----------------------|---------------------------|
+|--apikey               | DASHBOARD_APIKEY          |
+|--output-format        | DASHBOARD_OUTPUT_FORMAT   |
+|--url                  | DASHBOARD_URL             |
+
+
+**Security Note:** Care should be taken to not expose the apikey for this check by specifying it
+on the command line or by directly setting the environment variable in the check definition.  It is
+suggested to make use of [secrets management][7] to surface it as an environment variable.  The
+check definition below references it as a secret.  Below is an example secrets definition that make
+use of the built-in [env secrets provider][8].
+
+```yml
+---
+type: Secret
+api_version: secrets/v1
+metadata:
+  name: dashboard-apikey
+spec:
+  provider: env
+  id: DASHBOARD_APIKEY
+```
 
 ## Configuration
 
@@ -74,11 +118,17 @@ metadata:
   name: sensu-dashboard-metrics
   namespace: default
 spec:
-  command: sensu-dashboard-metrics --example example_arg
+  command: sensu-dashboard-metrics --output-format "prometheus_text"
   subscriptions:
-  - system
+  - sensu-metrics
   runtime_assets:
   - sensu/sensu-dashboard-metrics
+  output_metric_format: prometheus_text
+  output_metric_handlers:
+  - timeseries_database
+  secrets:
+  - name: DASHBORD_APIKEY
+    secret: dashboard-apikey
 ```
 
 ## Installation from source
