@@ -8,6 +8,8 @@
 ## Table of Contents
 - [Overview](#overview)
 - [Usage examples](#usage-examples)
+  - [Help output](#help-output)
+  - [Environment variables](#environment-variables)
 - [Configuration](#configuration)
   - [Asset registration](#asset-registration)
   - [Check definition](#check-definition)
@@ -35,7 +37,7 @@ Available Commands:
   version     Print the version number of this plugin
 
 Flags:
-  -a, --apikey string          Sensu apikey for authentication (use envvar CLUSTER_APIKEY in production)
+  -a, --apikey string          Sensu apikey for authentication (use envvar CLUSTER_API_KEY in production)
   -h, --help                   help for sensu-cluster-metrics
       --output-format string   metrics output format, supports: opentsdb_line or prometheus_text (default "opentsdb_line")
       --skip-insecure-verify   skip TLS certificate verification (not recommended!)
@@ -46,7 +48,7 @@ Flags:
 
 |Argument               |Environment Variable       |
 |-----------------------|---------------------------|
-|--apikey               | CLUSTER_APIKEY          |
+|--api-key              | CLUSTER_API_KEY          |
 |--output-format        | CLUSTER_OUTPUT_FORMAT   |
 |--url                  | CLUSTER_URL             |
 
@@ -65,7 +67,7 @@ metadata:
   name: cluster-apikey
 spec:
   provider: env
-  id: CLUSTER_APIKEY
+  id: CLUSTER_API_KEY
 ```
 
 ## Configuration
@@ -101,7 +103,7 @@ spec:
   output_metric_handlers:
   - timeseries_database
   secrets:
-  - name: CLUSTER_APIKEY
+  - name: CLUSTER_API_KEY
     secret: cluster-apikey
 ```
 
