@@ -11,6 +11,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // Config represents the check plugin config.
@@ -21,6 +24,9 @@ type Config struct {
 	CAFile     string
 	SkipVerify bool
 }
+
+var metrics = []string{}
+var tags = map[string]string{}
 
 var (
 	fedQueryData = map[string]string{"query": `{
@@ -193,6 +199,7 @@ type federationMetricsQuery struct {
 
 func executeCheck(event *types.Event) (int, error) {
 	//version query
+	timeNow := time.Now().Unix()
 	jsonData := map[string]string{
 		"query": `{ versions { backend { version } } }`,
 	}
@@ -203,12 +210,57 @@ func executeCheck(event *types.Event) (int, error) {
 	}
 	var result versionQuery
 	json.Unmarshal([]byte(data), &result)
-	fmt.Printf("result: %+v\n", result)
-
+	//fmt.Printf("result: %+v\n", result)
+	if len(result.Data.Versions.Backend.Version) > 0 {
+		tags["sensu_backend_version"] = result.Data.Versions.Backend.Version
+		tags["sensu_backend_url"] = plugin.Url
+	} else {
+		fmt.Printf("Unable to find Sensu backend version something went wrong\n")
+		return sensu.CheckStateCritical, nil
+	}
 	data, err = graphqlQuery(fedQueryData)
 	var fresult federationMetricsQuery
 	json.Unmarshal([]byte(data), &fresult)
-	fmt.Printf("fresult: %+v\n", fresult)
+	//fmt.Printf("fresult: %+v\n", fresult)
+	for _, cluster := range fresult.Data.Clusters {
+		if strings.Compare(cluster.Name, "~") == 0 {
+			tags["cluster_name"] = "local"
+		} else {
+			tags["cluster_name"] = cluster.Name
+		}
+		addMetric("cluster.total", tags, strconv.Itoa(cluster.Metrics.ClusterGauges.Total), timeNow)
+		for _, ns := range cluster.Metrics.Namespaces {
+			if strings.Compare(ns.Name, "~") == 0 {
+				tags["namespace_name"] = "local"
+			} else {
+				tags["namespace_name"] = ns.Name
+			}
+			addMetric("namespace.entity.total", tags, strconv.Itoa(ns.EntityGauges.Total), timeNow)
+			addMetric("namespace.entity.agent", tags, strconv.Itoa(ns.EntityGauges.Agent), timeNow)
+			addMetric("namespace.entity.other", tags, strconv.Itoa(ns.EntityGauges.Other), timeNow)
+			addMetric("namespace.entity.proxy", tags, strconv.Itoa(ns.EntityGauges.Proxy), timeNow)
+
+			addMetric("namespace.keepalive.total", tags, strconv.Itoa(ns.KeepaliveGauges.Total), timeNow)
+			addMetric("namespace.keepalive.state.passing", tags, strconv.Itoa(ns.KeepaliveGauges.StatePassing), timeNow)
+			addMetric("namespace.keepalive.state.failing", tags, strconv.Itoa(ns.KeepaliveGauges.StateFailing), timeNow)
+			addMetric("namespace.keepalive.status.okay", tags, strconv.Itoa(ns.KeepaliveGauges.StatusOK), timeNow)
+			addMetric("namespace.keepalive.status.warning", tags, strconv.Itoa(ns.KeepaliveGauges.StatusWarning), timeNow)
+			addMetric("namespace.keepalive.status.critical", tags, strconv.Itoa(ns.KeepaliveGauges.StatusCritical), timeNow)
+			addMetric("namespace.keepalive.status.other", tags, strconv.Itoa(ns.KeepaliveGauges.StatusOther), timeNow)
+
+			addMetric("namespace.event.total", tags, strconv.Itoa(ns.EventGauges.Total), timeNow)
+			addMetric("namespace.event.state.passing", tags, strconv.Itoa(ns.EventGauges.StatePassing), timeNow)
+			addMetric("namespace.event.state.failing", tags, strconv.Itoa(ns.EventGauges.StateFailing), timeNow)
+			addMetric("namespace.event.status.okay", tags, strconv.Itoa(ns.EventGauges.StatusOK), timeNow)
+			addMetric("namespace.event.status.warning", tags, strconv.Itoa(ns.EventGauges.StatusWarning), timeNow)
+			addMetric("namespace.event.status.critical", tags, strconv.Itoa(ns.EventGauges.StatusCritical), timeNow)
+			addMetric("namespace.event.status.other", tags, strconv.Itoa(ns.EventGauges.StatusOther), timeNow)
+		}
+	}
+	for _, metric := range metrics {
+		fmt.Println(metric)
+	}
+
 	return sensu.CheckStateOK, nil
 }
 
@@ -252,4 +304,14 @@ func graphqlQuery(queryStr map[string]string) ([]byte, error) {
 	data, _ := ioutil.ReadAll(response.Body)
 	//fmt.Println(string(data))
 	return []byte(data), err
+}
+
+func addMetric(metricName string, tags map[string]string, value string, timeNow int64) {
+	tagStr := ""
+	for tag, tvalue := range tags {
+		tagStr = tagStr + ";" + tag + "=" + tvalue
+	}
+	outputs := []string{metricName + tagStr, value, strconv.FormatInt(timeNow, 10)}
+	//fmt.Println(strings.Join(outputs, " "))
+	metrics = append(metrics, strings.Join(outputs, " "))
 }
