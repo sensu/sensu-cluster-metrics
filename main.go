@@ -30,7 +30,7 @@ var metrics = []string{}
 var tags = map[string]string{}
 
 var (
-	fedQueryData = map[string]string{"query": `{
+	clusterQueryData = map[string]string{"query": `{
   clusters: forward {
     ... on Query {
       name: clusterName
@@ -176,7 +176,7 @@ type keepaliveGauges struct {
 	Total          int
 }
 
-type federationMetricsQuery struct {
+type clusterMetricsQuery struct {
 	Auth bool
 	Data struct {
 		Clusters []struct {
@@ -206,24 +206,34 @@ func executeCheck(event *types.Event) (int, error) {
 	}
 	data, err := graphqlQuery(jsonData)
 	if err != nil {
-		fmt.Printf("The HTTP request failed with error %s\n", err)
+		fmt.Printf("The version query HTTP request failed with error %s\n", err)
 		return sensu.CheckStateCritical, nil
 	}
-	var result versionQuery
-	json.Unmarshal([]byte(data), &result)
-	//fmt.Printf("result: %+v\n", result)
-	if len(result.Data.Versions.Backend.Version) > 0 {
-		tags["sensu_backend_version"] = result.Data.Versions.Backend.Version
+	var vresult versionQuery
+	err = json.Unmarshal([]byte(data), &vresult)
+	if err != nil {
+		fmt.Printf("Version query response data parsing failed with error %s\n", err)
+		return sensu.CheckStateCritical, nil
+	}
+	if len(vresult.Data.Versions.Backend.Version) > 0 {
+		tags["sensu_backend_version"] = vresult.Data.Versions.Backend.Version
 		tags["sensu_backend_url"] = plugin.Url
 	} else {
 		fmt.Printf("Unable to find Sensu backend version something went wrong\n")
 		return sensu.CheckStateCritical, nil
 	}
-	data, err = graphqlQuery(fedQueryData)
-	var fresult federationMetricsQuery
-	json.Unmarshal([]byte(data), &fresult)
-	//fmt.Printf("fresult: %+v\n", fresult)
-	for _, cluster := range fresult.Data.Clusters {
+	data, err = graphqlQuery(clusterQueryData)
+	if err != nil {
+		fmt.Printf("The cluster query HTTP request failed with error %s\n", err)
+		return sensu.CheckStateCritical, nil
+	}
+	var qresult clusterMetricsQuery
+	err = json.Unmarshal([]byte(data), &qresult)
+	if err != nil {
+		fmt.Printf("Cluster metrics query response data parsing failed with error %s\n", err)
+		return sensu.CheckStateCritical, nil
+	}
+	for _, cluster := range qresult.Data.Clusters {
 		if strings.Compare(cluster.Name, "~") == 0 {
 			tags["cluster"] = "local"
 		} else {
