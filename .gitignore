@@ -4,7 +4,7 @@
 *.dll
 *.so
 *.dylib
-sensu-dashboard-metrics
+sensu-cluster-metrics
 
 # Test binary, build with `go test -c`
 *.test
