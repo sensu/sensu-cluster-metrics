@@ -13,8 +13,8 @@
 - [Configuration](#configuration)
   - [Asset registration](#asset-registration)
   - [Check definition](#check-definition)
+  - [RBAC](#rbac)
 - [Installation from source](#installation-from-source)
-- [Additional notes](#additional-notes)
 - [Contributing](#contributing)
 
 ## Overview
@@ -48,9 +48,9 @@ Flags:
 
 |Argument               |Environment Variable       |
 |-----------------------|---------------------------|
-|--api-key              | CLUSTER_API_KEY          |
-|--output-format        | CLUSTER_OUTPUT_FORMAT   |
-|--url                  | CLUSTER_URL             |
+|--api-key              | CLUSTER_API_KEY           |
+|--output-format        | CLUSTER_OUTPUT_FORMAT     |
+|--url                  | CLUSTER_URL               |
 
 
 **Security Note:** Care should be taken to not expose the apikey for this check by specifying it
@@ -106,6 +106,33 @@ spec:
   - name: CLUSTER_API_KEY
     secret: cluster-apikey
 ```
+### RBAC
+
+It is advised to use [RBAC][11] to create a Sensu user scoped specifically for
+purposes such as these commands and to not re-use the admin account. For these
+commands, in particular, the account would only need read access to entities, namespaces, and events. 
+The example below shows how to create this limited-scope user and the necessary role and role-binding resources to give it the required access.
+
+```bash
+sensuctl user create cluster-metrics --password='3yBa!#k90vq'
+Created
+
+sensuctl role create cluster-metrics-role --verb get,list --resource entities,namespaces,events
+Created
+
+sensuctl role-binding create cluster-metrics-binding --role=cluster-metrics-role --user=cluster-metrics
+Created
+```
+
+Then create an [API key][12] for this user:
+
+```bash
+sensuctl api-key grant cluster-metrics
+Created: /api/core/v2/apikeys/0af36dbf-9fe1-40a4-8194-95b5fac95639
+```
+
+The key (the text after [...]/apikeys/) above can be used with the `--api-key` option, but
+preferably it should be stored and accessed as a secret.
 
 ## Installation from source
 
@@ -118,8 +145,6 @@ From the local path of the sensu-cluster-metrics repository:
 ```
 go build
 ```
-
-## Additional notes
 
 ## Contributing
 
@@ -135,3 +160,5 @@ For more information about contributing to this plugin, see [Contributing][1].
 [8]: https://bonsai.sensu.io/
 [9]: https://github.com/sensu-community/sensu-plugin-tool
 [10]: https://docs.sensu.io/sensu-go/latest/reference/assets/
+[11]: https://docs.sensu.io/sensu-go/latest/operations/control-access/rbac/
+[12]: https://docs.sensu.io/sensu-go/latest/reference/apikeys/
