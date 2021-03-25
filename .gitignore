@@ -5,7 +5,7 @@
 *.so
 *.dylib
 sensu-cluster-metrics
-
+.envrc
 # Test binary, build with `go test -c`
 *.test
 
