@@ -120,7 +120,7 @@ Created
 sensuctl cluster-role create cluster-metrics-role --verb get,list --resource entities,namespaces,events
 Created
 
-sensuctl cluster-role-binding create cluster-metrics-binding --role=cluster-metrics-role --user=cluster-metrics
+sensuctl cluster-role-binding create cluster-metrics-binding --cluster-role=cluster-metrics-role --user=cluster-metrics
 Created
 ```
 
