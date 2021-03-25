@@ -117,10 +117,10 @@ The example below shows how to create this limited-scope user and the necessary 
 sensuctl user create cluster-metrics --password='3yBa!#k90vq'
 Created
 
-sensuctl role create cluster-metrics-role --verb get,list --resource entities,namespaces,events
+sensuctl cluster-role create cluster-metrics-role --verb get,list --resource entities,namespaces,events
 Created
 
-sensuctl role-binding create cluster-metrics-binding --role=cluster-metrics-role --user=cluster-metrics
+sensuctl cluster-role-binding create cluster-metrics-binding --role=cluster-metrics-role --user=cluster-metrics
 Created
 ```
 
