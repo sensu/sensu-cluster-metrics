@@ -37,20 +37,21 @@ Available Commands:
   version     Print the version number of this plugin
 
 Flags:
-  -a, --apikey string          Sensu apikey for authentication (use envvar CLUSTER_API_KEY in production)
+  -k, --api-key string         Sensu api-key for authentication (use envvar CLUSTER_API_KEY in production)
+      --dry-run                for testing only, do not use during regular operation
   -h, --help                   help for sensu-cluster-metrics
       --output-format string   metrics output format, supports: opentsdb_line or prometheus_text (default "opentsdb_line")
-      --skip-insecure-verify   skip TLS certificate verification (not recommended!)
-  -u, --url string             url to access the Sensu federated cluster graphql endpoint (default "http://localhost:8080/graphql")
-
+      --skip-insecure-verify   skip TLS certificate verification (not recommended!) (default true)
+  -u, --url string             url to access the Sensu cluster graphql endpoint (default "https://localhost:8080/graphql")
 ```
 ### Environment variables
 
 |Argument               |Environment Variable       |
 |-----------------------|---------------------------|
 |--api-key              | CLUSTER_API_KEY           |
-|--output-format        | CLUSTER_OUTPUT_FORMAT     |
 |--url                  | CLUSTER_URL               |
+|--output-format        | CLUSTER_OUTPUT_FORMAT     |
+|--dry-run              | CLUSTER_DRY_RUN           |
 
 
 **Security Note:** Care should be taken to not expose the apikey for this check by specifying it
