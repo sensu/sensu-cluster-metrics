@@ -24,6 +24,7 @@ type Config struct {
 	CAFile       string
 	OutputFormat string
 	SkipVerify   bool
+	DryRun       bool
 }
 
 var metrics = []string{}
@@ -107,11 +108,18 @@ var (
 			Value:     &plugin.ApiKey,
 		},
 		&sensu.PluginConfigOption{
-			Path:     "skip-insecure-verify",
 			Argument: "skip-insecure-verify",
+			Env:      "CLUSTER_SKIP_VERIFY",
 			Default:  false,
 			Usage:    "skip TLS certificate verification (not recommended!)",
 			Value:    &plugin.SkipVerify,
+		},
+		&sensu.PluginConfigOption{
+			Argument: "dry-run",
+			Env:      "CLUSTER_DRY_RUN",
+			Default:  false,
+			Usage:    "for testing only, do not use during regular operation",
+			Value:    &plugin.DryRun,
 		},
 		&sensu.PluginConfigOption{
 			Path:     "output-format",
@@ -127,6 +135,12 @@ var (
 func main() {
 	check := sensu.NewGoCheck(&plugin.PluginConfig, options, checkArgs, executeCheck, false)
 	check.Execute()
+}
+
+func StatusQuery(namespace string) string {
+	prefix := `{ namespace(name: "`
+	suffix := `") { entities { nodes { metadata { name namespace } status }}}}`
+	return prefix + namespace + suffix
 }
 
 func checkArgs(event *types.Event) (int, error) {
@@ -147,6 +161,26 @@ type versionQuery struct {
 			}
 		}
 	}
+}
+
+type statusQuery struct {
+	Data struct {
+		Namespace struct {
+			Entities struct {
+				Nodes []entityNode
+			}
+		}
+	}
+}
+
+type sensuMetadata struct {
+	Namespace string
+	Name      string
+}
+
+type entityNode struct {
+	Status   int
+	Metadata sensuMetadata
 }
 
 type entityGauges struct {
@@ -222,10 +256,15 @@ func executeCheck(event *types.Event) (int, error) {
 		fmt.Printf("Unable to find Sensu backend version something went wrong\n")
 		return sensu.CheckStateCritical, nil
 	}
+
 	data, err = graphqlQuery(clusterQueryData)
 	if err != nil {
 		fmt.Printf("The cluster query HTTP request failed with error %s\n", err)
 		return sensu.CheckStateCritical, nil
+	}
+	if plugin.DryRun {
+		fmt.Println("Cluster Query Response:")
+		fmt.Println(string(data))
 	}
 	var qresult clusterMetricsQuery
 	err = json.Unmarshal([]byte(data), &qresult)
@@ -266,12 +305,49 @@ func executeCheck(event *types.Event) (int, error) {
 			addMetric("namespace.event.status.warning", tags, strconv.Itoa(ns.EventGauges.StatusWarning), timeNow)
 			addMetric("namespace.event.status.critical", tags, strconv.Itoa(ns.EventGauges.StatusCritical), timeNow)
 			addMetric("namespace.event.status.other", tags, strconv.Itoa(ns.EventGauges.StatusOther), timeNow)
+			//query entity status for namespace
+			jsonData := map[string]string{
+				"query": StatusQuery(ns.Name),
+			}
+			data, err := graphqlQuery(jsonData)
+			if err != nil {
+				fmt.Printf("The version query HTTP request failed with error %s\n", err)
+				return sensu.CheckStateCritical, nil
+			}
+			var sresult statusQuery
+			err = json.Unmarshal([]byte(data), &sresult)
+			if err != nil {
+				fmt.Printf("Entity status query response data parsing failed with error %s\n", err)
+				return sensu.CheckStateCritical, nil
+			}
+			if plugin.DryRun {
+				fmt.Printf("namespace: %s\n", ns.Name)
+				fmt.Printf("  status query:\n %s\n", StatusQuery(ns.Name))
+				fmt.Printf("  query result:\n %s\n", string(data))
+				fmt.Printf("  statusQuery:\n %v\n", sresult)
+			}
+			for _, entity := range sresult.Data.Namespace.Entities.Nodes {
+				tags["entity"] = entity.Metadata.Name
+				addMetric("entity.status", tags, strconv.Itoa(entity.Status), timeNow)
+				if plugin.DryRun {
+					fmt.Printf("    processing entity: %v\n", entity.Metadata.Name)
+					fmt.Printf("    tags:\n %v\n", tags)
+				}
+			}
+			delete(tags, "entity")
+
+		}
+		delete(tags, "namespace")
+	}
+	delete(tags, "cluster")
+	delete(tags, "sensu_backend_version")
+	delete(tags, "sensu_backend_url")
+
+	if !plugin.DryRun {
+		for _, metric := range metrics {
+			fmt.Println(metric)
 		}
 	}
-	for _, metric := range metrics {
-		fmt.Println(metric)
-	}
-
 	return sensu.CheckStateOK, nil
 }
 
