@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## [0.0.2] - 2020-03-25
+### Added
+- Added support for entity.status metric, to record status for all entities, tagged by cluster,namespace,entity names
+
+### Changed
+- supported command line arguments changed since 0.0.1 release 
+
 ## [0.0.1] - 2020-03-23
 
 ### Added
